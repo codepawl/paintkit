@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "paintkit"
+version = "0.1.0"
+description = "Code brushes that repaint any picture in watercolour, stroke by stroke, and film it."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = ["numpy>=1.24", "scipy>=1.10", "scikit-image>=0.21", "pillow>=10"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+paintkit = "paintkit.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["paintkit"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
