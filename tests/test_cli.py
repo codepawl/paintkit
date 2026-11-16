@@ -46,3 +46,18 @@ def test_film_writes_a_video_and_the_final_still(tmp_path):
     cli.main(["film", str(source), "-o", str(film), "--size", "160", "--seconds", "2", "--still", str(still)])
     assert film.stat().st_size > 10000
     assert np.asarray(Image.open(still)).shape[:2] == (160, 120)
+
+
+def test_glazing_painter_follows_the_picture_and_keeps_darks(tmp_path):
+    source = tmp_path / "source.png"
+    output = tmp_path / "painting.png"
+    make_picture(source)
+    cli.main(["paint", str(source), "-o", str(output), "--size", "240", "--painter", "glazing"])
+    painting = np.asarray(Image.open(output)).astype(np.float32) / 255
+    reference = np.asarray(Image.open(source)).astype(np.float32) / 255
+    assert painting.shape == (240, 180, 3)
+    disc = painting[90:110, 80:100].mean(axis=(0, 1))
+    corner = painting[200:230, 10:40].mean(axis=(0, 1))
+    assert disc[0] > disc[2], "the yellow disc should read warm"
+    assert corner[2] > corner[0], "the lower left should read blue"
+    assert np.abs(painting - reference).mean() < 0.12, "the glazing painter should stay close to the picture"

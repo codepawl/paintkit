@@ -20,12 +20,16 @@ import numpy as np
 from PIL import Image
 
 from . import colour as colour_module
+from . import glazing
 from . import painterly
+
+PAINTERS = {"classic": painterly, "glazing": glazing}
 
 DESIGN_HEIGHT = 4096  # painterly's brush sizes are given for a picture this tall
 WET_DARKENING = 1.15  # fresh paint reads darker than the dried wash
 FPS = 30
 HOLD_SECONDS = 2.5
+PAINTER_HELP = "classic: fast, loose washes. glazing: slower, closer to the picture, deeper darks"
 
 
 def load_target(path: Path, size: int) -> np.ndarray:
@@ -38,13 +42,13 @@ def load_target(path: Path, size: int) -> np.ndarray:
     return np.asarray(image, dtype=np.float32) / 255.0
 
 
-def paint_picture(target: np.ndarray, seed: int, recorder=None, log=None):
+def paint_picture(target: np.ndarray, seed: int, recorder=None, log=None, painter: str = "classic"):
     height, width = target.shape[:2]
     scale = height / DESIGN_HEIGHT
     fallback_angle = np.zeros((height, width), dtype=np.float32)
     fallback_weight = np.full((height, width), 0.12, dtype=np.float32)
-    return painterly.paint(target, scale, fallback_angle, fallback_weight, None, seed=seed,
-                           log=log or (lambda message: None), recorder=recorder)
+    return PAINTERS[painter].paint(target, scale, fallback_angle, fallback_weight, None, seed=seed,
+                                 log=log or (lambda message: None), recorder=recorder)
 
 
 def to_bytes(image: np.ndarray) -> np.ndarray:
@@ -54,7 +58,8 @@ def to_bytes(image: np.ndarray) -> np.ndarray:
 def command_paint(arguments) -> None:
     started = time.perf_counter()
     target = load_target(arguments.image, arguments.size)
-    paper = paint_picture(target, arguments.seed, log=print if arguments.verbose else None)
+    paper = paint_picture(target, arguments.seed, log=print if arguments.verbose else None,
+                          painter=arguments.painter)
     Image.fromarray(to_bytes(paper.render())).save(arguments.output)
     print("painted %s (%dx%d) in %.0f s" % (arguments.output, target.shape[1], target.shape[0],
                                             time.perf_counter() - started))
@@ -75,7 +80,7 @@ def command_film(arguments) -> None:
         snapshots.append(to_bytes(paper.render()))
         paper.density = dried
 
-    paper = paint_picture(target, arguments.seed, recorder=record)
+    paper = paint_picture(target, arguments.seed, recorder=record, painter=arguments.painter)
     snapshots.append(to_bytes(paper.render()))
     if arguments.still:
         Image.fromarray(snapshots[-1]).save(arguments.still)
@@ -124,6 +129,7 @@ def main(argv=None) -> None:
     paint.add_argument("--size", type=int, default=2048, help="long side of the painting in pixels (default 2048)")
     paint.add_argument("--seed", type=int, default=7)
     paint.add_argument("--verbose", action="store_true", help="print each pass")
+    paint.add_argument("--painter", choices=sorted(PAINTERS), default="classic", help=PAINTER_HELP)
     paint.set_defaults(handler=command_paint)
 
     film = commands.add_parser("film", help="film the painting stroke by stroke as an MP4")
@@ -133,6 +139,7 @@ def main(argv=None) -> None:
     film.add_argument("--seconds", type=float, default=22.0, help="time spent painting before the final hold")
     film.add_argument("--seed", type=int, default=7)
     film.add_argument("--still", type=Path, help="also save the finished painting as a PNG")
+    film.add_argument("--painter", choices=sorted(PAINTERS), default="classic", help=PAINTER_HELP)
     film.set_defaults(handler=command_film)
 
     arguments = parser.parse_args(argv)

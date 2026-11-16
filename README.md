@@ -42,6 +42,7 @@ paintkit film photo.jpg -o painting.mp4 --size 1024 --still painting.png
 | Option | Default | What it does |
 | --- | --- | --- |
 | `--size` | 2048 (`paint`), 1024 (`film`) | Long side of the output in pixels |
+| `--painter` | `classic` | `classic` is fast with loose washes. `glazing` is slower, stays closer to the picture and reaches deeper darks |
 | `--seed` | 7 | Changes where strokes start. The same seed gives the same painting |
 | `--seconds` | 22 | `film` only: time spent painting before the 2.5 s hold on the result |
 | `--still` | none | `film` only: also save the finished painting as a PNG |
